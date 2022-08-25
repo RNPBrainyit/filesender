@@ -1,5 +1,32 @@
 <!DOCTYPE html>
 <?php
+
+    if(Config::get('shibboleth_auth_type') == 'http'){
+        $configUID = Config::get('auth_sp_shibboleth_uid_attribute');
+        $configName = Config::get('auth_sp_shibboleth_name_attribute');
+        $configEmail = Config::get('auth_sp_shibboleth_email_attribute');
+        $configIDProvider = Config::get('auth_sp_set_idp_as_user_organization');
+        if(isset($_SERVER[$configUID]))
+            $_SESSION['uid_attribute'] = $_SERVER[$configUID];
+        if(isset($_SERVER[$configName]))
+            $_SESSION['name_attribute'] = $_SERVER[$configName];
+        if(isset($_SERVER[$configEmail]))
+            $_SESSION['email_attribute'] = $_SERVER[$configEmail];
+        if(isset($_SESSION[$configIDProvider]))
+            $_SESSION['Shib-Identity-Provider'] = $_SERVER[$configIDProvider];
+
+        if(isset($_GET['action']) && $_GET['action'] == 'login'){
+	    // assuming /secure is the path set in shibboleth for requiring authentication
+            // change the path based on your case
+            header('Location:'. Config::get('site_url') . '/secure');
+            exit();
+        } else if (isset($_SERVER[$configUID])) {
+            header('Location:'. Config::get('site_url'));
+            exit();
+        } 
+
+    }
+
     $headerclass = "header";
 
     try {

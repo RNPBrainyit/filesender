@@ -98,6 +98,8 @@
 //
 // If you want to overide the SAML simplephp configuration defaults parameter,
 // uncoment and edit the following lines
+// // When shibboleth attributes are sent through http headers (for instance, when ShibUseHeaders On and ProxyPass are set in Apache/mod-shib configuration)
+// $config['shibboleth_auth_type'] = 'http';
 // 
 // // Authentification type ('saml' or 'shibboleth')
 // $config['auth_sp_type'] = 'saml';

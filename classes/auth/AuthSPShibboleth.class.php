@@ -64,8 +64,17 @@ class AuthSPShibboleth
      */
     public static function isAuthenticated()
     {
+        if (Auth::isSessionStarted() === false) {
+            session_start();
+        }
+        //Defines if this logged and if information Shib-Identity-Provider this the $_SESSION or the Env
         if (is_null(self::$isAuthenticated)) {
-            self::$isAuthenticated = (bool)getenv('Shib-Identity-Provider');
+            if(Config::get('shibboleth_auth_type') === 'http'){
+                self::$isAuthenticated = (bool)$_SESSION["Shib-Identity-Provider"] ?? false;
+            }else{
+                self::$isAuthenticated = (bool)getenv('Shib-Identity-Provider');
+            }
+            
         }
         
         return self::$isAuthenticated;
@@ -80,31 +89,44 @@ class AuthSPShibboleth
     {
         if (is_null(self::$attributes)) {
             if (!self::isAuthenticated()) {
+                error_log("AuthSPAuthenticationNotFoundException");
                 throw new AuthSPAuthenticationNotFoundException();
             }
             
             self::load();
             
-            $attributes = array('idp' => getenv('Shib-Identity-Provider'));
-            
-            // Wanted attributes
-            foreach (array('uid', 'name', 'email') as $attr) {
-                // Keys in raw_attributes (can be array of key)
-                $keys = self::$config[$attr.'_attribute'];
-                if (!is_array($keys)) {
-                    $keys = array($keys);
+            //Get attributes in $_SESSION or in env
+            if(Config::get('shibboleth_auth_type') === 'http') {
+                if (Auth::isSessionStarted() === false) {
+                    session_start();
                 }
+                $attributes['uid'] = $_SESSION["uid_attribute"] ?? " ";
+                $attributes['name'] = $_SESSION["name_attribute"] ?? " ";
+                $attributes['email'] = $_SESSION["email_attribute"] ?? " ";
+                // Finished modification for authentication
+            }else {
+                $attributes = array('idp' => getenv('Shib-Identity-Provider'));
                 
-                $values = array();
-                foreach ($keys as $key) { // For all possible keys for attribute
-                    $value = explode(';', getenv($key));
-                    foreach ($value as $v) {
-                        $values[] = $v;
-                    } // Gather values of all successive possible keys as array
+                // Wanted attributes
+                foreach (array('uid', 'name', 'email') as $attr) {
+                    // Keys in raw_attributes (can be array of key)
+                    $keys = self::$config[$attr.'_attribute'];
+                    if (!is_array($keys)) {
+                        $keys = array($keys);
+                    }
+                    
+                    $values = array();
+                    foreach ($keys as $key) { // For all possible keys for attribute
+                        $value = explode(';', getenv($key));
+                        foreach ($value as $v) {
+                            $values[] = $v;
+                        } // Gather values of all successive possible keys as array
+                    }
+                    $values = array_filter(array_map('trim', $values)); // Remove empty values
+                    
+                    $attributes[$attr] = count($values) ? $values : null;
                 }
-                $values = array_filter(array_map('trim', $values)); // Remove empty values
-                
-                $attributes[$attr] = count($values) ? $values : null;
+
             }
             
             // Proccess received attributes
